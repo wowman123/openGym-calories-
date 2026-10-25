@@ -663,6 +663,71 @@ body.chips-dragging *{cursor:inherit}
 .measure-home-grid b{display:block;font-size:16px;margin:3px 0;white-space:nowrap}
 .measure-empty{width:100%;display:flex;align-items:center;justify-content:space-between;text-align:left;color:var(--label-2);font-size:13px;gap:10px}
 .measure-empty .icn{flex:none}
+
+/* ------------------------------------------------------------- calories -- */
+/* views/Calories.jsx and Home's card (components/CaloriesCard.jsx). The ring is the day against
+   the goal; it turns orange past it rather than red, since going over is information, not an error. */
+.kcal-hero{display:flex;align-items:center;gap:20px}
+.kcal-ring{position:relative;width:132px;height:132px;flex:none}
+.kcal-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.kcal-ring circle{fill:none;stroke-width:10}
+.kcal-ring .trk{stroke:var(--surface-3)}
+.kcal-ring .val{stroke:var(--acc);stroke-linecap:round;transition:stroke-dashoffset 600ms var(--ease),stroke var(--med)}
+.kcal-ring.over .val{stroke:var(--orange)}
+.kcal-ring-c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.kcal-num{font-size:30px;font-weight:600;letter-spacing:-.026em;line-height:1;font-variant-numeric:tabular-nums}
+.kcal-unit{font-size:12px;color:var(--label-2);margin-top:4px}
+.kcal-stats{flex:1;min-width:0;display:flex;flex-direction:column;gap:12px;margin:0}
+.kcal-stats>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.kcal-stats dt{font-size:15px;color:var(--label-2)}
+.kcal-stats dd{margin:0;font-size:17px;font-weight:600;font-variant-numeric:tabular-nums;text-align:end}
+.kcal-stats dd.over{color:var(--orange)}
+.kcal-goal{color:var(--acc);font-weight:600;font-size:17px;font-variant-numeric:tabular-nums}
+@media (max-width:359px){.kcal-hero{flex-direction:column;align-items:stretch}.kcal-ring{align-self:center}}
+
+.kcal-add{display:flex;flex-direction:column;gap:10px}
+.kcal-fields{display:grid;grid-template-columns:minmax(0,1fr) 104px;gap:8px}
+.kcal-fields .field{min-width:0;width:100%;background:var(--surface-2)}
+.kcal-tip{font-size:12px;color:var(--label-3);padding:0 2px}
+.kcal-sec{margin:22px 0 8px;padding-inline-end:2px}
+.kcal-sec h4.sec{margin:0}
+.kcal-chips{display:flex;flex-wrap:wrap;gap:8px}
+.kcal-chip{display:inline-flex;align-items:center;gap:6px;text-transform:none;max-width:100%}
+.kcal-chip .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.kcal-chip .kc{color:var(--label-2);font-size:13px;font-variant-numeric:tabular-nums}
+.kcal-chip .ct{color:var(--acc);font-size:12px;font-variant-numeric:tabular-nums}
+.kcal-chip.suggest{background:transparent;box-shadow:inset 0 0 0 1px var(--sep)}
+.kcal-chip.forget .icn{color:var(--red);font-size:12px;--icon-stroke:2.4}
+.kcal-hint{font-size:13px;color:var(--label-2);margin:10px 4px 0;line-height:1.38}
+.kcal-meal-t{display:flex;justify-content:space-between;gap:12px;font-variant-numeric:tabular-nums}
+.kcal-v{font-weight:600;font-size:17px;font-variant-numeric:tabular-nums;flex:none}
+.kcal-del{width:32px;height:32px;font-size:15px;color:var(--label-3)}
+.kcal-del:hover,.kcal-del:focus-visible{color:var(--red)}
+.kcal-empty{padding:26px 20px}
+.kcal-empty .ttl{color:var(--label);font-weight:600;margin-bottom:4px}
+
+.kcal-plot{position:relative;height:124px;display:grid;grid-template-columns:repeat(7,1fr);gap:8px;align-items:end}
+.kcal-goal-line{position:absolute;inset-inline:0;height:0;border-top:1px dashed var(--label-3);pointer-events:none;z-index:1}
+.kcal-goal-line span{position:absolute;inset-inline-end:0;bottom:3px;font-size:11px;color:var(--label-2);background:var(--surface);padding-inline-start:4px}
+.kcal-col{height:100%;display:flex;align-items:flex-end;justify-content:center;border-radius:6px}
+.kcal-bar{display:block;width:100%;max-width:30px;height:3px;background:var(--acc);border-radius:6px 6px 3px 3px;transition:height 500ms var(--ease)}
+.kcal-bar.over{background:var(--orange)}
+.kcal-bar.none{background:var(--surface-3)}
+.kcal-col.sel .kcal-bar{box-shadow:0 0 0 2px var(--surface),0 0 0 3.5px var(--label-2)}
+.kcal-x{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:8px;text-align:center}
+.kcal-x div{font-size:11px;color:var(--label-3);line-height:1.3;font-variant-numeric:tabular-nums}
+.kcal-x b{display:block;font-weight:600;font-size:12px;color:var(--label-2)}
+.kcal-x .sel b{color:var(--label)}
+.kcal-avg{margin-top:12px}
+
+.kcal-glance{cursor:pointer;border-radius:10px}
+.kcal-meter{height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden;margin:10px 0 8px}
+.kcal-meter span{display:block;height:100%;background:var(--acc);border-radius:3px;transition:width 600ms var(--ease)}
+.kcal-meter.over span{background:var(--orange)}
+.kcal-quick{margin:10px -4px -6px}
+.kcal-card .chip{background:var(--surface-2)}
+.kcal-card .chip:active{background:var(--surface-3)}
+@media (prefers-reduced-motion:reduce){.kcal-ring .val,.kcal-bar,.kcal-meter span{transition:none}}
 .exnote{
   background:var(--surface);border-radius:var(--r);padding:13px 15px;
   line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);

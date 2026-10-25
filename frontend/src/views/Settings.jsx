@@ -816,6 +816,11 @@ export default function Settings({ page = null, find = null, via = null, entryKe
           subtitle={t('Show the body weight card on Home.')}>
           <Switch checked={S.showWeightCard !== false} onChange={v => update(s => { s.showWeightCard = v })} />
         </Row>
+        {/* Today's calories and the remembered foods; off hides the card, the log and /calories stay. */}
+        <Row icon="fork" iconTint="var(--orange)" title={t('Calories')}
+          subtitle={t('Show the calories card on Home.')}>
+          <Switch checked={S.showCaloriesCard !== false} onChange={v => update(s => { s.showCaloriesCard = v })} />
+        </Row>
         {/* The bar at the top that says the app is offline, kept local, or not synced (#369, #330).
             Here and not under Server & sync, which a phone kept local never shows. Switching it on
             also brings back the no-server line its × hid (#454). */}

@@ -94,6 +94,10 @@ export const DEF = {
   // Body measurements (#82): one check-in per day, values in cm whatever the weight unit
   // (lib/measurements.js); merged across devices like weigh-ins (lib/sync-merge.js).
   measurements: [], measurementEnabled: null, customMeasurements: [],
+  // Calories (views/Calories.jsx, lib/calories.js): one stamped entry per thing eaten, and the
+  // foods remembered for one-tap logging, each merged per entry like dayNotes. The goal is a
+  // plain setting; showCaloriesCard folds the Home card away (Settings → On Home).
+  foodLog: {}, foods: {}, kcalGoal: 2500, showCaloriesCard: true,
   queue: null,   // a planner's floating week (lib/queue.js) — via the API, or by this rotation feature (below)
   // The in-app rotation's reusable definition — { id, sequence, label } (lib/rotation.js). Never
   // a live queue: it only ever feeds `queue`, and `queue.rotationId` says the pass is managed here.
