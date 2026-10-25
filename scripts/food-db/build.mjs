@@ -4,7 +4,7 @@
 //
 //   us  USDA FoodData Central: FNDDS survey foods (dishes as eaten, with portions), Foundation
 //       Foods and SR Legacy                                         public domain (CC0)
-//   fr  ANSES CIQUAL 2020, France                                   Licence Ouverte / Etalab 2.0
+//   fr  ANSES CIQUAL (2025), France                                  Licence Ouverte / Etalab 2.0
 //   uk  McCance and Widdowson's CoFID 2021, United Kingdom          Open Government Licence v3.0
 //   jp  MEXT Standard Tables of Food Composition in Japan 2015      Government of Japan terms (attribution)
 //
@@ -31,7 +31,7 @@ const say = s => { log.push(s); console.log(s) }
 
 export const SOURCES = {
   us: { name: 'USDA FoodData Central (FNDDS, Foundation Foods, SR Legacy)', licence: 'Public domain (CC0 1.0)', url: 'https://fdc.nal.usda.gov/' },
-  fr: { name: 'ANSES-CIQUAL French food composition table 2020', licence: 'Licence Ouverte / Open Licence (Etalab)', url: 'https://ciqual.anses.fr/' },
+  fr: { name: 'ANSES-CIQUAL French food composition table', licence: 'Licence Ouverte / Open Licence (Etalab)', url: 'https://ciqual.anses.fr/' },
   uk: { name: "McCance and Widdowson's Composition of Foods Integrated Dataset 2021 (Public Health England)", licence: 'Open Government Licence v3.0', url: 'https://www.gov.uk/government/publications/composition-of-foods-integrated-dataset-cofid' },
   jp: { name: 'Standard Tables of Food Composition in Japan 2015 (Seventh Revised Edition), MEXT', licence: 'Government of Japan Standard Terms of Use (attribution)', url: 'https://www.mext.go.jp/en/policy/science_technology/policy/title01/detail01/1374030.htm' },
 }
@@ -206,7 +206,7 @@ function locate(rows, fields, scan = 25) {
   return null
 }
 
-function fromSheets(label, src, list, fields, { nameOk = () => true } = {}) {
+function fromSheets(label, src, list, fields, { nameOk = () => true, rename = n => n } = {}) {
   const out = []
   for (const s of list) {
     peek(label, s)
@@ -214,7 +214,7 @@ function fromSheets(label, src, list, fields, { nameOk = () => true } = {}) {
     if (!at) { say(`  - no name + kcal columns found in "${s.name}"`); continue }
     say(`  - header row ${at.header + 1}, columns ${JSON.stringify(at.cols)}`)
     for (const r of s.rows.slice(at.header + 1)) {
-      const name = clean(r[at.cols.name])
+      const name = clean(rename(clean(r[at.cols.name]), r, at.cols))
       const kcal = num(r[at.cols.kcal])
       if (!name || kcal == null || kcal > 950 || !nameOk(name, r)) continue
       out.push({ name, src, kcal: r0(kcal), p: r1(num(r[at.cols.p])), f: r1(num(r[at.cols.f])), c: r1(num(r[at.cols.c])), portions: [] })
@@ -226,19 +226,37 @@ function fromSheets(label, src, list, fields, { nameOk = () => true } = {}) {
 }
 
 function ciqual(dl) {
-  const files = fs.existsSync(dl) ? fs.readdirSync(dl).filter(f => /^ciqual.*\.xlsx?$/i.test(f)).sort() : []
+  const files = fs.existsSync(dl) ? fs.readdirSync(dl).filter(f => /^ciqual.*\.xlsx?_?$/i.test(f)).sort() : []
   say(`- CIQUAL files: ${files.join(', ') || 'none'}`)
+  // The spreadsheet of the current release names foods in French only; its alim XML has the
+  // English name of each food code beside the French one.
+  const english = {}
+  const xml = path.join(dl, 'ciqual-alim.xml')
+  if (fs.existsSync(xml)) {
+    const buf = fs.readFileSync(xml)
+    const enc = /encoding="([^"]+)"/i.exec(buf.subarray(0, 200).toString('latin1'))?.[1] || 'utf-8'
+    let text
+    try { text = new TextDecoder(enc.toLowerCase()).decode(buf) } catch { text = buf.toString('utf8') }
+    for (const m of text.matchAll(/<ALIM>([\s\S]*?)<\/ALIM>/g)) {
+      const code = /<alim_code>\s*([^<]*?)\s*<\/alim_code>/.exec(m[1])?.[1]
+      const eng = /<alim_nom_eng>\s*([^<]*?)\s*<\/alim_nom_eng>/.exec(m[1])?.[1]
+      if (code && eng) english[String(Number(code))] = eng.replace(/&amp;/g, '&').replace(/&apos;/g, "'").replace(/&quot;/g, '"')
+    }
+    say(`- CIQUAL English names from the alim XML (${enc}): ${Object.keys(english).length}`)
+  }
+  const rename = (name, r, cols) => (cols.code != null && english[String(Number(r[cols.code]))]) || name
   if (!files.length) { say('- CIQUAL: no spreadsheet downloaded'); return [] }
   let best = []
   for (const f of files) {
     say(`- CIQUAL ${f}:`)
     const got = fromSheets('CIQUAL ' + f, 'fr', sheets(path.join(dl, f), 'CIQUAL'), {
       name: [/^alim_nom_eng$/i, /^alim_nom_fr$/i, /food name/i],
+      code: [/^alim_code$/i],
       kcal: [/1169.*kcal/i, /energ.*kcal/i],
       p: [/jones/i, /^prot.*6[.,]25/i, /^prot/i],
       f: [/^(fat|lipides)\b/i],
       c: [/^(carbohydrate|glucides)\b/i],
-    })
+    }, { rename })
     // The English table first: an English name reads better in this app than the French one.
     if (got.length > best.length || (got.length && /eng|en/i.test(f) && got.length >= best.length * 0.9)) best = got
   }

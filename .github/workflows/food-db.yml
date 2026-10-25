@@ -59,8 +59,11 @@ jobs:
           if curl -fsSL --retry 2 -o dv.json "$DV/api/datasets/:persistentId/?persistentId=doi:10.57745/RDMHWY"; then
             node -e 'const d=require("./dv.json");for(const f of d.data.latestVersion.files){const x=f.dataFile;console.log(x.id+"\t"+x.filename)}' > dv-files.txt || true
             sed 's/^/     dataverse: /' dv-files.txt | tee -a downloads.txt
-            grep -iE '\.(xlsx|xls)$' dv-files.txt | head -4 | while IFS="$(printf '\t')" read -r id fname; do
-              get "$DV/api/access/datafile/$id" "ciqual-dv-$(echo "$fname" | tr -c 'A-Za-z0-9._-' '_')"
+            grep -iE '\.xlsx$' dv-files.txt | head -1 | while IFS="$(printf '\t')" read -r id fname; do
+              get "$DV/api/access/datafile/$id" "ciqual-dv-$(printf %s "$fname" | tr -c 'A-Za-z0-9._-' '_')"
+            done
+            grep -iE '(^|\t)alim_[0-9_]+\.xml$' dv-files.txt | head -1 | while IFS="$(printf '\t')" read -r id fname; do
+              get "$DV/api/access/datafile/$id" ciqual-alim.xml
             done
           else
             echo "FAIL dataverse listing" | tee -a downloads.txt
