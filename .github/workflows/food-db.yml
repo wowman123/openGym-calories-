@@ -1,0 +1,72 @@
+# Rebuilds the Calories screen's offline food database (frontend/public/food-db/foods.json) from
+# the national food composition tables and commits it, with scripts/food-db/report.md saying what
+# each source gave. Runs when the builder changes, or by hand (Actions → Food database → Run).
+# A source that fails to download is left out and named in the report; the rest still build.
+name: Food database
+
+on:
+  push:
+    branches: [main, feature/calories]
+    paths:
+      - 'scripts/food-db/**'
+      - '!scripts/food-db/report.md'
+      - '.github/workflows/food-db.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: food-db-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Download the tables
+        run: |
+          set -u
+          mkdir -p food-dl && cd food-dl
+          get() {  # url file — a failed download is reported, not fatal
+            curl -fsSL --retry 3 --retry-delay 5 -A "openGym-calories food-db builder" -o "$2" "$1" \
+              && echo "ok   $2 $(du -h "$2" | cut -f1)" || { echo "FAIL $2 <- $1"; rm -f "$2"; }
+          }
+          FDC=https://fdc.nal.usda.gov/fdc-datasets
+          get "$FDC/FoodData_Central_survey_food_csv_2024-10-31.zip" survey.zip
+          get "$FDC/FoodData_Central_foundation_food_csv_2026-04-30.zip" foundation.zip \
+            || true
+          [ -f foundation.zip ] || get "$FDC/FoodData_Central_foundation_food_csv_2025-12-18.zip" foundation.zip
+          get "$FDC/FoodData_Central_sr_legacy_food_csv_2018-04.zip" sr.zip
+          for z in survey foundation sr; do
+            [ -f "$z.zip" ] && unzip -q -o "$z.zip" -d "usda-$z" || echo "no $z.zip"
+          done
+          # CIQUAL 2020 (data.gouv.fr): both spreadsheet editions; the builder keeps the English one.
+          get https://www.data.gouv.fr/api/1/datasets/r/bcdb7fec-875c-42aa-ba6e-460adf97aad3 ciqual-a.xls
+          get https://www.data.gouv.fr/api/1/datasets/r/f844ae25-6cbf-4027-930c-6a62459b8d42 ciqual-b.xls
+          get "https://assets.publishing.service.gov.uk/media/60538b91e90e07527df82ae4/McCance_Widdowsons_Composition_of_Foods_Integrated_Dataset_2021..xlsx" cofid.xlsx
+          get https://www.mext.go.jp/component/english/__icsFiles/afieldfile/2017/12/25/1374049_1r12_1.xlsx japan.xlsx
+          ls -la
+          npm init -y >/dev/null
+          npm install --no-audit --no-fund xlsx@0.18.5 >/dev/null
+
+      - name: Build the database
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: node scripts/food-db/build.mjs food-dl frontend/public/food-db scripts/food-db/report.md
+
+      - name: Commit it
+        run: |
+          git config user.name "food-db builder"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/public/food-db scripts/food-db/report.md
+          if git diff --cached --quiet; then echo "No change."; exit 0; fi
+          git commit -m "Food database: rebuild from the composition tables"
+          git push
