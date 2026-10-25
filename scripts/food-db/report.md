@@ -16,6 +16,7 @@ FAIL ciqual-en.xls <- https://ciqual.anses.fr/cms/sites/default/files/inline-fil
      dataverse: 666245	Table Ciqual 2025_FR_2025_11_03.xls
      dataverse: 666260	Table Ciqual 2025_FR_2025_11_03.xlsx
 ok   ciqual-dv-Table_Ciqual_2025_FR_2025_11_03.xlsx 1.5M Microsoft Excel 2007+
+ok   ciqual-alim.xml 1.6M XML 1.0 document, Unicode text, UTF-8 (with BOM) text, with 
 FAIL ciqual-a.xls <- https://www.data.gouv.fr/api/1/datasets/r/bcdb7fec-875c-42aa-ba6e-460adf97aad3
 FAIL ciqual-b.xls <- https://www.data.gouv.fr/api/1/datasets/r/f844ae25-6cbf-4027-930c-6a62459b8d42
 ok   cofid.xlsx 4.5M Microsoft Excel 2007+
@@ -34,6 +35,7 @@ ok   japan.xlsx 892K Microsoft Excel 2007+
   food_nutrient.csv: 644125 rows, columns id,fdc_id,nutrient_id,amount,data_points,derivation_id,min,max,median,footnote,min_year_acquired; ids seen: 1003,1004,1005,1007,1008,1009,1010,1011,1012,1013,1014,1018,1051,1057,1058,1062,1075,1079,1087,1089,1090,1091,1092,1093,1095,1098,1099,1101,1103,1104
 - USDA SR Legacy: 7793 rows (sr_legacy_food 7793), 7793 with nutrients, 7533 with portions → 7793 foods
 - CIQUAL files: ciqual-dv-Table_Ciqual_2025_FR_2025_11_03.xlsx
+- CIQUAL English names from the alim XML (utf-8): 3484
 - CIQUAL ciqual-dv-Table_Ciqual_2025_FR_2025_11_03.xlsx:
   - sheet "composition nutritionnelle" (3485 rows); top rows:
     | alim_grp_code | alim_ssgrp_code | alim_ssssgrp_code | alim_grp_nom_fr | alim_ssgrp_nom_fr | alim_ssssgrp_nom_fr | alim_code | alim_nom_fr | alim_nom_sci | Energie, Règlement UE N° 116 | Energie, Règlement UE N° 116 | Energie, N x facteur Jones,  | Energie, N x facteur Jones,  | Eau (g 100 g)
@@ -44,7 +46,7 @@ ok   japan.xlsx 892K Microsoft Excel 2007+
     | 01 | 0101 | 000000 | entrées et plats composés | salades composées et crudité | - | 25601 | Salade de thon et légumes, a |  | 489 | 117 | 489 | 117 | 76,5
     | 01 | 0101 | 000000 | entrées et plats composés | salades composées et crudité | - | 25602 | Salade composée avec viande  |  | 458 | 110 | 458 | 110 | 76,7
     | 01 | 0101 | 000000 | entrées et plats composés | salades composées et crudité | - | 25605 | Champignons à la grecque, pr |  | 316 | 76,3 | 316 | 76,3 | 85,2
-  - header row 1, columns {"name":7,"code":6,"kcal":10,"p":11,"f":17,"c":16}
+  - header row 1, columns {"name":7,"code":6,"kcal":10,"p":14,"f":17,"c":16}
 - CIQUAL ciqual-dv-Table_Ciqual_2025_FR_2025_11_03.xlsx: 3341 foods
 - CoFID:
   - sheet "1.3 Proximates" (2890 rows); top rows:
@@ -73,17 +75,17 @@ ok   japan.xlsx 892K Microsoft Excel 2007+
 
 ## Result
 
-21742 foods, 2.22 MB: us 13358, fr 3341, uk 2852, jp 2191
+21742 foods, 2.21 MB: us 13358, fr 3341, uk 2852, jp 2191
 
 Samples:
 - ["Agave liquid sweetener","us",310,0.1,0.5,76.4,[["Typical serving",20],["1 tablespoon",20],["Guideline amount per fl oz of beverage",3.5]]]
 - ["Almond milk, unsweetened, plain, refrigerated","us",19,0.7,1.6,0.7,[]]
 - ["Apricots, dehydrated (low-moisture), sulfured, uncooked","us",320,4.9,0.6,82.9,[["1 cup",119]]]
 - ["Baby Toddler cereal, oatmeal, ready-to-eat","us",76,2.5,1.3,13.8,[["1 pouch",110],["1 jar / tub",110],["Typical serving",110],["1 tablespoon",15]]]
-- ["Abricot, dénoyauté, cru","fr",44,187,0.5,9,[]]
-- ["Bambou, pousse, crue","fr",29,122,0.3,2.6,[]]
-- ["Biscuit sec aux céréales complètes","fr",462,1940,18.4,63,[]]
-- ["Boeuf, steak haché 20% MG cru","fr",249,1030,20,0,[]]
+- ["Albacore, raw","fr",121,27.2,1.4,0,[]]
+- ["Atlantic herring, smoked, in oil","fr",168,15.1,11,2,[]]
+- ["Beef, sirloin steak, roasted/baked","fr",194,28.8,8.7,0,[]]
+- ["Bogue, raw","fr",92,17.9,2,0.5,[]]
 - ["Almonds, whole kernels","uk",554,21.2,49.9,5.3,[]]
 - ["Bass, sea, flesh only, baked","uk",154,23.2,6.8,0,[]]
 - ["Beef, mince, extra lean, stewed","uk",137,24.7,4.2,0,[]]
