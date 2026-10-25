@@ -728,6 +728,25 @@ body.chips-dragging *{cursor:inherit}
 .kcal-card .chip{background:var(--surface-2)}
 .kcal-card .chip:active{background:var(--surface-3)}
 @media (prefers-reduced-motion:reduce){.kcal-ring .val,.kcal-bar,.kcal-meter span{transition:none}}
+
+/* The food database search (components/FoodSearch.jsx): results as an inset list, the amount sheet. */
+.kcal-add .btn.tinted{margin-top:-2px}
+.food-search{display:flex;flex-direction:column}
+.food-search>.btn{margin-top:4px}
+.food-list .food-row{font:inherit;border:0;cursor:pointer}
+.food-list .lrow-t{font-size:16px;overflow-wrap:anywhere}
+.food-note{padding:4px 4px 2px}
+.food-credit{margin:10px 4px 0;line-height:1.38}
+.food-sheet-t{overflow-wrap:anywhere}
+.food-portions{flex-wrap:wrap;overflow:visible;touch-action:auto;margin:14px -4px 10px}
+.food-portions .chip{text-transform:none;white-space:normal;text-align:start;background:var(--surface-2)}
+.food-portions .chip.on{background:var(--acc)}
+.food-grams{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.food-grams>span:first-child{color:var(--label-2);font-size:15px}
+.food-grams .measure-input{max-width:150px}
+.food-total{margin:16px 0 14px;display:flex;flex-direction:column;gap:4px}
+.food-total>div:first-child{font-size:17px;color:var(--label-2)}
+.food-kcal{font-size:34px;font-weight:600;letter-spacing:-.026em;color:var(--label);font-variant-numeric:tabular-nums}
 .exnote{
   background:var(--surface);border-radius:var(--r);padding:13px 15px;
   line-height:1.45;white-space:pre-wrap;font-size:15px;margin-bottom:10px;color:var(--label-2);

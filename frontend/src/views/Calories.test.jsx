@@ -11,6 +11,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { entriesOn, rememberedFoods, withFoodEntry, withRemembered } from '../lib/calories.js'
 import { todayISO } from '../lib/format.js'
+import { resetFoodDb } from '../lib/food-db.js'
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true
 
@@ -41,14 +42,29 @@ vi.mock('react-router-dom', () => ({ useNavigate: () => mocks.nav }))
 
 import Calories from './Calories.jsx'
 
-let host, root
+// The food database the search loads (public/food-db/foods.json), as a fetch would hand it over.
+const FOOD_DB = { v: 1, sources: {}, foods: [
+  ['Bananas, raw', 'us', 89, 1.1, 0.3, 22.8, [['1 medium', 118]]],
+  ['Banana bread', 'us', 326, 4.3, 10.5, 54.6, [['1 slice', 60]]],
+] }
+
+let host, root, sheetHost, sheetRoot
 beforeEach(() => {
+  resetFoodDb()
+  vi.stubGlobal('fetch', vi.fn(async url => (String(url).includes('food-db/foods.json')
+    ? { ok: true, json: async () => FOOD_DB } : { ok: false, status: 500 })))
+  sheetHost = document.createElement('div'); document.body.appendChild(sheetHost); sheetRoot = createRoot(sheetHost)
   mocks.S = { foodLog: {}, foods: {}, kcalGoal: 2000 }
   mocks.toast.mockClear(); mocks.nav.mockClear(); mocks.sheets.length = 0
   update.mockClear()
   host = document.createElement('div'); document.body.appendChild(host); root = createRoot(host)
 })
-afterEach(() => { act(() => root.unmount()); host.remove() })
+afterEach(() => {
+  act(() => sheetRoot.unmount()); sheetHost.remove()
+  act(() => root.unmount()); host.remove()
+  vi.unstubAllGlobals()
+})
+const settle = () => act(async () => { await new Promise(r => setTimeout(r, 0)) })
 
 const render = () => act(() => { root.render(<Calories />) })
 const typeInto = (el, value) => act(() => {
@@ -138,5 +154,29 @@ describe('Calories screen', () => {
     const [entry] = Object.values(mocks.S.foodLog)
     expect(entry.d < today).toBe(true)
     expect(entriesOn(mocks.S, today)).toEqual([])
+  })
+
+  it('finds foods in the database as a name is typed, and logs the amount picked', async () => {
+    render()
+    typeInto(host.querySelector('#kcal-food'), 'banana')
+    await settle(); await settle()
+    const rows = [...host.querySelectorAll('.food-row')]
+    expect(rows.map(r => r.querySelector('.lrow-t').textContent)).toEqual(['Bananas, raw', 'Banana bread'])
+    expect(rows[0].querySelector('.lrow-s').textContent).toContain('1 medium: 105 kcal')
+    tap(rows[0])
+    act(() => { sheetRoot.render(mocks.sheets.at(-1)(() => {})) })
+    const sheetButton = text => [...sheetHost.querySelectorAll('button')].find(b => b.textContent.trim() === text)
+    expect(sheetButton('Add 105 kcal')).toBeTruthy()
+    tap(sheetButton('Add 105 kcal'))
+    expect(entriesOn(mocks.S, today)).toMatchObject([{ name: 'Bananas, raw · 1 medium', kcal: 105 }])
+    expect(rememberedFoods(mocks.S)[0]).toMatchObject({ name: 'Bananas, raw · 1 medium', kcal: 105 })
+  })
+
+  it('offers the online search only on request', async () => {
+    render()
+    typeInto(host.querySelector('#kcal-food'), 'bamba')
+    await settle()
+    expect(fetch.mock.calls.some(([u]) => String(u).includes('openfoodfacts'))).toBe(false)
+    expect(button('Search “bamba” online')).toBeTruthy()
   })
 })

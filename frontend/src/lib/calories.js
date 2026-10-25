@@ -26,7 +26,7 @@ export const KCAL_GOAL_DEFAULT = 2500
 export const KCAL_GOAL_MIN = 800
 export const KCAL_GOAL_MAX = 10000
 export const KCAL_MAX = 20000      // one entry; a typo beyond this is no meal
-export const FOOD_NAME_MAX = 60
+export const FOOD_NAME_MAX = 120   // a database food's name with its portion fits
 
 const isMap = v => !!v && typeof v === 'object' && !Array.isArray(v)
 const ISO = /^\d{4}-\d{2}-\d{2}$/

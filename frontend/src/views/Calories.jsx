@@ -10,6 +10,7 @@ import {
   foodNamed, logFood, unlogFood, withFoodEntry, withoutFoodEntry, withFoodRecord, shiftISO,
 } from '../lib/calories.js'
 import Icon from '../components/Icon.jsx'
+import FoodSearch, { scanFoodBarcode, CAN_SCAN } from '../components/FoodSearch.jsx'
 import { Button, Segmented, Stepper, TextField } from '../components/ui.jsx'
 
 // Calories: what you ate on a day against your goal, and the foods you eat often, remembered so
@@ -152,6 +153,8 @@ export default function Calories() {
     nameRef.current?.focus()
   }
   const onEnter = e => { if (e.key === 'Enter') { e.preventDefault(); submit() } }
+  // A food logged from the database or a scan: the form starts over.
+  const cleared = () => { setName(''); setKcal(''); setAuto(false) }
 
   const max = Math.max(goal * 1.2, ...week.map(x => x.kcal)) || 1
   const meals = MEALS.filter(m => entries.some(e => e.meal === m))
@@ -178,16 +181,17 @@ export default function Calories() {
     <div className="card kcal-add">
       <Segmented className="kcal-meals" value={meal} onChange={setMeal} options={MEALS.map(m => ({ value: m, label: t(MEAL_LABEL[m]) }))} />
       <div className="kcal-fields">
-        <TextField ref={nameRef} id="kcal-food" value={name} maxLength={FOOD_NAME_MAX} placeholder={t('Food')} aria-label={t('Food')}
+        <TextField ref={nameRef} id="kcal-food" value={name} maxLength={FOOD_NAME_MAX} placeholder={t('Search foods, or name your own')} aria-label={t('Food')}
           autoComplete="off" enterKeyHint="next" onChange={e => onName(e.target.value)} onKeyDown={onEnter} />
         <TextField id="kcal-amount" value={kcal} inputMode="decimal" maxLength={24} placeholder="kcal" aria-label={t('Calories')}
           autoComplete="off" enterKeyHint="done" onChange={e => { setKcal(e.target.value); setAuto(false) }} onKeyDown={onEnter} />
       </div>
       <Button variant="primary" icon="plus" onClick={submit}>{t('Add')}</Button>
-      <div className="kcal-tip">{t('Calories take sums too: 120+80 or 2x105.')}</div>
+      {CAN_SCAN && <Button variant="tinted" icon="qr" onClick={() => scanFoodBarcode({ meal, day, onAdded: cleared })}>{t('Scan a barcode')}</Button>}
+      <div className="kcal-tip">{t('Type a food to search the database, or give your own calories. Sums work too: 120+80 or 2x105.')}</div>
     </div>
 
-    <div className="row between kcal-sec">
+    {(!typing || shownFoods.length > 0) && <><div className="row between kcal-sec">
       <h4 className="sec">{typing ? t('Remembered foods matching “{0}”', name.trim()) : t('Remembered')}</h4>
       {foods.length > 0 && !typing && <Button size="sm" variant="ghost" onClick={() => setEditing(e => !e)}>{editing ? t('Done') : t('Edit')}</Button>}
     </div>
@@ -207,10 +211,12 @@ export default function Calories() {
     </div>
     <div className="kcal-hint">
       {editing ? t('Tap a food to forget it.')
-        : typing ? (shownFoods.length ? t('Tap one to add it as it was last logged.') : t('Nothing remembered by that name yet. Add it once and it will be.'))
+        : typing ? t('Tap one to add it as it was last logged.')
         : foods.length ? t('Tap to add it to {0} with the calories you logged last.', t(MEAL_LABEL[meal]).toLowerCase())
         : t('Typical values to get going. Every food you log is remembered here, ready to add again in one tap.')}
-    </div>
+    </div></>}
+
+    {typing && <FoodSearch query={name} meal={meal} day={day} onAdded={cleared} />}
 
     <div className="row between kcal-sec">
       <h4 className="sec">{isToday ? t('Today’s log') : t('Log for {0}', fmtDate(day, true))}</h4>

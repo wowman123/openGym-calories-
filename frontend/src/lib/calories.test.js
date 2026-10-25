@@ -7,7 +7,7 @@ import {
   goalOf, parseGoal, parseKcal, mealAt, foodKey, cleanFoodName, readFoodEntry, foodEntries, entriesOn,
   totalOn, dayTotals, logStreak, lastDays, loggedAverage, rememberedFoods, foodNamed,
   withFoodEntry, withoutFoodEntry, withRemembered, withFoodRecord, logFood, unlogFood, shiftISO,
-  QUICK_ADD, STARTER_FOODS, KCAL_GOAL_DEFAULT,
+  QUICK_ADD, STARTER_FOODS, KCAL_GOAL_DEFAULT, FOOD_NAME_MAX,
 } from './calories.js'
 import { localExtras, mergeStates, STAMPED_MAPS } from './sync-merge.js'
 
@@ -55,7 +55,7 @@ describe('calories: reading what was typed', () => {
 
   it('files a food under its name, case and spacing aside', () => {
     expect(foodKey('  Greek   Yogurt ')).toBe('greek yogurt')
-    expect(cleanFoodName('x'.repeat(80))).toHaveLength(60)
+    expect(cleanFoodName('x'.repeat(200))).toHaveLength(FOOD_NAME_MAX)
   })
 })
 
