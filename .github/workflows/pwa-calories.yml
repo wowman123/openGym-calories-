@@ -1,0 +1,82 @@
+# The calories fork as a Home Screen web app for the iPhone (and any other phone or computer):
+# every push builds the app with no server behind it (VITE_LOCAL_ONLY=1, lib/demo.js — straight in,
+# everything stored on the device), adds the exercise media, and publishes it to the gh-pages
+# branch, which GitHub Pages serves at https://<owner>.github.io/<repo>/.
+#
+# On the iPhone: open that address in Safari → Share → Add to Home Screen. It then opens full
+# screen like an app, works offline, and picks up a new build the next time it is opened online.
+#
+# Published as commits on gh-pages rather than a fresh orphan each time: the ~200 MB of exercise
+# media do not change between builds, so git sends only what did.
+name: iPhone web app (calories)
+
+on:
+  push:
+    branches: [main, feature/calories]
+    paths:
+      - 'frontend/**'
+      - 'catalogue/**'
+      - 'scripts/catalogue/**'
+      - '.github/workflows/pwa-calories.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pwa-calories
+  cancel-in-progress: false
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - run: npm ci
+        working-directory: frontend
+
+      - name: Build the app
+        working-directory: frontend
+        env:
+          VITE_LOCAL_ONLY: '1'
+        run: npm run build
+
+      - name: Add the exercise media
+        run: node scripts/catalogue/stage-media.mjs frontend/dist
+
+      - name: Name it
+        working-directory: frontend/dist
+        run: |
+          sed -i 's|"name": "openGym"|"name": "openGym Calories"|' manifest.json
+          grep -n '"name"' manifest.json
+
+      - name: Publish to gh-pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          URL="https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git clone --quiet --depth 1 --branch gh-pages "$URL" site 2>/dev/null; then
+            echo "Updating gh-pages"
+          else
+            echo "Creating gh-pages"
+            mkdir site && cd site && git init --quiet -b gh-pages && git remote add origin "$URL" && cd ..
+          fi
+          rsync -a --delete --exclude .git frontend/dist/ site/
+          touch site/.nojekyll
+          cd site
+          git config user.name "web app builder"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then echo "No change."; exit 0; fi
+          git commit --quiet -m "Web app from ${GITHUB_REF_NAME} (${GITHUB_SHA::7})"
+          git push --quiet origin gh-pages
+          echo "Published. Once Pages is on (Settings → Pages → Deploy from a branch → gh-pages): https://${GITHUB_REPOSITORY_OWNER}.github.io/${GITHUB_REPOSITORY#*/}/"

@@ -13,7 +13,7 @@ import { readFileSync } from 'node:fs'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({ MOBILE: false, coachLocal: null, toast: vi.fn() }))
-vi.mock('./demo.js', () => ({ DEMO: false, DEMO_SEEDED: 'gym_demo_seeded_v1', REPO: '' }))
+vi.mock('./demo.js', () => ({ LOCAL_ONLY: false, DEMO: false, DEMO_SEEDED: 'gym_demo_seeded_v1', REPO: '' }))
 vi.mock('./mobile.js', () => ({ get MOBILE() { return mocks.MOBILE } }))
 vi.mock('./api.js', () => ({ api: vi.fn() }))
 vi.mock('./coach-demo.js', () => ({}))
