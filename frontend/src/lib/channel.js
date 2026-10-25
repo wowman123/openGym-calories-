@@ -24,8 +24,11 @@ export function getChannel() {
   })().catch(() => 'web'))
 }
 
-// The in-app updater is for the sideloaded APK only.
+// The in-app updater is for the sideloaded APK only. A build made elsewhere (VITE_SELF_UPDATE=0,
+// the calories fork's own APK) has its own app id and signing key, so the official release is
+// no update for it: the update row stays away.
 export async function selfUpdates() {
+  if (import.meta.env.VITE_SELF_UPDATE === '0') return false
   return (await getChannel()) === 'sideload'
 }
 

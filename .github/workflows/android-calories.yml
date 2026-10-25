@@ -1,0 +1,115 @@
+# The calories fork's own Android app: every push builds a signed APK and publishes it as the
+# latest release, so the phone always installs from
+#   https://github.com/<this repo>/releases/latest
+#
+# It installs next to the official openGym (its own app id and name, below) and never offers the
+# official release as an update (VITE_SELF_UPDATE=0, lib/channel.js). Updates install over each
+# other because every build is signed with the same key: frontend/android/calories.keystore, or
+# the ANDROID_KEYSTORE_B64 / ANDROID_KEYSTORE_PASSWORD secrets when the repo sets them. Keep
+# whichever key you use: Android only installs an update signed with the key the app was
+# installed with, and switching keys means uninstalling, which takes the app's data with it.
+name: Android APK (calories)
+
+on:
+  push:
+    branches: [main, feature/calories]
+    paths:
+      - 'frontend/**'
+      - 'catalogue/**'
+      - 'scripts/catalogue/**'
+      - '.github/workflows/android-calories.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-calories-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - run: npm ci
+        working-directory: frontend
+
+      # The VITE_MOBILE build, the 180 px exercise media and `cap sync` into android/, as the
+      # official APK job does (.gitlab-ci.yml build:apk). No in-app updater in this build.
+      - name: Build the app's pages
+        working-directory: frontend
+        env:
+          VITE_SELF_UPDATE: '0'
+        run: npm run build:mobile
+
+      # Its own id and name, so it sits next to the official openGym instead of clashing with it,
+      # and a version code that rises with every build so each one installs over the last.
+      - name: Name this build
+        working-directory: frontend/android
+        run: |
+          set -eu
+          CODE=$((1000 + GITHUB_RUN_NUMBER))
+          BASE="$(node -p "require('../package.json').version")"
+          echo "VER=$BASE-calories.$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+          sed -i 's|applicationId "ch.duartesantos.opengym"|applicationId "ch.duartesantos.opengym.calories"|' app/build.gradle
+          sed -i -E "s|versionCode [0-9]+|versionCode $CODE|; s|versionName \"[^\"]+\"|versionName \"$BASE-calories.$GITHUB_RUN_NUMBER\"|" app/build.gradle
+          sed -i 's|<string name="app_name">openGym</string>|<string name="app_name">openGym Calories</string>|; s|<string name="title_activity_main">openGym</string>|<string name="title_activity_main">openGym Calories</string>|' app/src/main/res/values/strings.xml
+          grep -n 'applicationId\|versionCode\|versionName' app/build.gradle
+          grep -n 'app_name' app/src/main/res/values/strings.xml
+
+      - name: Build the APK
+        working-directory: frontend/android
+        run: ./gradlew --no-daemon assembleSideloadRelease
+
+      - name: Sign the APK
+        working-directory: frontend/android
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KS_PASS: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          set -eu
+          KS=calories.keystore; PASS=opengym-calories; ALIAS=calories
+          if [ -n "${KS_B64:-}" ]; then
+            echo "$KS_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            KS="$RUNNER_TEMP/release.keystore"; PASS="$KS_PASS"; ALIAS="${{ secrets.ANDROID_KEY_ALIAS || 'calories' }}"
+          fi
+          BT="$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)"
+          UNSIGNED=app/build/outputs/apk/sideload/release/app-sideload-release-unsigned.apk
+          "$BT/zipalign" -f -p 4 "$UNSIGNED" aligned.apk
+          "$BT/apksigner" sign --ks "$KS" --ks-pass "pass:$PASS" --ks-key-alias "$ALIAS" --key-pass "pass:$PASS" \
+            --out "$GITHUB_WORKSPACE/openGym-Calories.apk" aligned.apk
+          "$BT/apksigner" verify --print-certs "$GITHUB_WORKSPACE/openGym-Calories.apk"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: openGym-Calories-${{ env.VER }}
+          path: openGym-Calories.apk
+
+      # The download the phone opens: releases/latest always holds the newest build.
+      - name: Publish as the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          TAG="calories-$VER"
+          gh release create "$TAG" openGym-Calories.apk \
+            --target "$GITHUB_SHA" --latest \
+            --title "openGym Calories $VER" \
+            --notes "openGym with the calorie tracker, built from ${GITHUB_REF_NAME} (${GITHUB_SHA::7}). Open this page on your Android phone, tap openGym-Calories.apk and install it. A newer build installs over this one and keeps your data."
