@@ -62,7 +62,7 @@ jobs:
             grep -iE '\.xlsx$' dv-files.txt | head -1 | while IFS="$(printf '\t')" read -r id fname; do
               get "$DV/api/access/datafile/$id" "ciqual-dv-$(printf %s "$fname" | tr -c 'A-Za-z0-9._-' '_')"
             done
-            grep -iE '(^|\t)alim_[0-9_]+\.xml$' dv-files.txt | head -1 | while IFS="$(printf '\t')" read -r id fname; do
+            grep -iE 'alim_[0-9_]+\.xml$' dv-files.txt | head -1 | while IFS="$(printf '\t')" read -r id fname; do
               get "$DV/api/access/datafile/$id" ciqual-alim.xml
             done
           else

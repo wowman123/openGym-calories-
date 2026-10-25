@@ -253,7 +253,7 @@ function ciqual(dl) {
       name: [/^alim_nom_eng$/i, /^alim_nom_fr$/i, /food name/i],
       code: [/^alim_code$/i],
       kcal: [/1169.*kcal/i, /energ.*kcal/i],
-      p: [/jones/i, /^prot.*6[.,]25/i, /^prot/i],
+      p: [/^prot.*jones/i, /^prot.*6[.,]25/i, /^prot/i],   // "Energie, N x facteur Jones" is energy, not protein
       f: [/^(fat|lipides)\b/i],
       c: [/^(carbohydrate|glucides)\b/i],
     }, { rename })
