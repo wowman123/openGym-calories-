@@ -35,9 +35,12 @@ jobs:
         run: |
           set -u
           mkdir -p food-dl && cd food-dl
-          get() {  # url file — a failed download is reported, not fatal
-            curl -fsSL --retry 3 --retry-delay 5 -A "openGym-calories food-db builder" -o "$2" "$1" \
-              && echo "ok   $2 $(du -h "$2" | cut -f1)" || { echo "FAIL $2 <- $1"; rm -f "$2"; }
+          get() {  # url file — a failed download is reported (downloads.txt, in the report), not fatal
+            if curl -fsSL --retry 3 --retry-delay 5 -A "openGym-calories food-db builder" -o "$2" "$1"; then
+              echo "ok   $2 $(du -h "$2" | cut -f1) $(file -b "$2" | cut -c1-60)" | tee -a downloads.txt
+            else
+              echo "FAIL $2 <- $1" | tee -a downloads.txt; rm -f "$2"
+            fi
           }
           FDC=https://fdc.nal.usda.gov/fdc-datasets
           get "$FDC/FoodData_Central_survey_food_csv_2024-10-31.zip" survey.zip
@@ -48,7 +51,20 @@ jobs:
           for z in survey foundation sr; do
             [ -f "$z.zip" ] && unzip -q -o "$z.zip" -d "usda-$z" || echo "no $z.zip"
           done
-          # CIQUAL 2020 (data.gouv.fr): both spreadsheet editions; the builder keeps the English one.
+          # CIQUAL (France). The English table from ANSES first; then the current release on
+          # recherche.data.gouv.fr (a Dataverse: list the files, take its spreadsheets); then the
+          # 2020 copies on data.gouv.fr. The builder keeps whichever reads best.
+          get "https://ciqual.anses.fr/cms/sites/default/files/inline-files/Table%20Ciqual%202020_ENG_2020%2007%2007.xls" ciqual-en.xls
+          DV=https://entrepot.recherche.data.gouv.fr
+          if curl -fsSL --retry 2 -o dv.json "$DV/api/datasets/:persistentId/?persistentId=doi:10.57745/RDMHWY"; then
+            node -e 'const d=require("./dv.json");for(const f of d.data.latestVersion.files){const x=f.dataFile;console.log(x.id+"\t"+x.filename)}' > dv-files.txt || true
+            sed 's/^/     dataverse: /' dv-files.txt | tee -a downloads.txt
+            grep -iE '\.(xlsx|xls)$' dv-files.txt | head -4 | while IFS="$(printf '\t')" read -r id fname; do
+              get "$DV/api/access/datafile/$id" "ciqual-dv-$(echo "$fname" | tr -c 'A-Za-z0-9._-' '_')"
+            done
+          else
+            echo "FAIL dataverse listing" | tee -a downloads.txt
+          fi
           get https://www.data.gouv.fr/api/1/datasets/r/bcdb7fec-875c-42aa-ba6e-460adf97aad3 ciqual-a.xls
           get https://www.data.gouv.fr/api/1/datasets/r/f844ae25-6cbf-4027-930c-6a62459b8d42 ciqual-b.xls
           get "https://assets.publishing.service.gov.uk/media/60538b91e90e07527df82ae4/McCance_Widdowsons_Composition_of_Foods_Integrated_Dataset_2021..xlsx" cofid.xlsx

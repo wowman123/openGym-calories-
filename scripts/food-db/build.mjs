@@ -98,21 +98,41 @@ const clean = s => String(s ?? '').replace(/\s+/g, ' ').trim()
 
 /* --------------------------------------------------------------------- USDA -- */
 
-const ENERGY = ['1008', '2047', '2048']   // kcal; Foundation Foods often only carry the Atwater ones
-const PROTEIN = '1003', FAT = '1004', CARBS = '1005'
+// Nutrients by FoodData Central id, with the older SR numbers some files use instead (208, 203…).
+// Energy in kcal: Foundation Foods often only carry the Atwater ones (2047, 2048).
+const ENERGY = ['1008', '208', '2047', '2048', '957', '958']
+const PROTEIN = ['1003', '203'], FAT = ['1004', '204'], CARBS = ['1005', '205']
+const first = (n, ids) => ids.map(k => n[k]).find(v => v != null)
 
 function usda(dir, label) {
   const foods = readCsv(find(dir, 'food.csv'))
   if (!foods.length) { say(`- ${label}: no food.csv under ${dir}`); return [] }
   const units = Object.fromEntries(readCsv(find(dir, 'measure_unit.csv')).map(u => [u.id, u.name]))
-  const want = new Set([...ENERGY, PROTEIN, FAT, CARBS])
+  // nutrient.csv, where there is one, says which id is which, whatever the numbering.
+  const alias = {}
+  for (const n of readCsv(find(dir, 'nutrient.csv'))) {
+    const name = String(n.name || ''), unit = String(n.unit_name || '').toUpperCase()
+    if (/^energy/i.test(name) && unit === 'KCAL') alias[n.id] = alias[n.id] || '1008'
+    else if (/^protein$/i.test(name)) alias[n.id] = '1003'
+    else if (/^total lipid/i.test(name)) alias[n.id] = '1004'
+    else if (/^carbohydrate, by difference/i.test(name)) alias[n.id] = '1005'
+  }
+  const want = new Set([...ENERGY, ...PROTEIN, ...FAT, ...CARBS, ...Object.keys(alias)])
+  const nfile = find(dir, 'food_nutrient.csv')
+  const rows = readCsv(nfile)
+  const seenIds = {}
   const nut = new Map()
-  for (const r of readCsv(find(dir, 'food_nutrient.csv'))) {
-    if (!want.has(r.nutrient_id)) continue
+  for (const r of rows) {
+    const id = r.nutrient_id ?? r.nutrient_nbr
+    if (Object.keys(seenIds).length < 400) seenIds[id] = (seenIds[id] || 0) + 1
+    if (!want.has(id)) continue
     const m = nut.get(r.fdc_id) || {}
-    m[r.nutrient_id] = num(r.amount)
+    m[id] = num(r.amount)
+    if (alias[id] && m[alias[id]] == null) m[alias[id]] = m[id]
     nut.set(r.fdc_id, m)
   }
+  say(`- ${label} files: ${fs.readdirSync(path.dirname(find(dir, 'food.csv'))).join(', ')}`)
+  say(`  food_nutrient.csv: ${nfile ? rows.length + ' rows, columns ' + Object.keys(rows[0] || {}).join(',') : 'missing'}; ids seen: ${Object.keys(seenIds).slice(0, 30).join(',')}`)
   const portions = new Map()
   for (const p of readCsv(find(dir, 'food_portion.csv'))) {
     const g = num(p.gram_weight)
@@ -132,9 +152,9 @@ function usda(dir, label) {
     types[f.data_type] = (types[f.data_type] || 0) + 1
     if (!/survey_fndds_food|foundation_food|sr_legacy_food/.test(f.data_type || '')) continue
     const n = nut.get(f.fdc_id) || {}
-    const kcal = ENERGY.map(k => n[k]).find(v => v != null)
+    const kcal = first(n, ENERGY)
     if (kcal == null) continue
-    out.push({ name: clean(f.description), src: 'us', kcal: r0(kcal), p: r1(n[PROTEIN]), f: r1(n[FAT]), c: r1(n[CARBS]), portions: (portions.get(f.fdc_id) || []).slice(0, 6), type: f.data_type })
+    out.push({ name: clean(f.description), src: 'us', kcal: r0(kcal), p: r1(first(n, PROTEIN)), f: r1(first(n, FAT)), c: r1(first(n, CARBS)), portions: (portions.get(f.fdc_id) || []).slice(0, 6), type: f.data_type })
   }
   say(`- ${label}: ${foods.length} rows (${Object.entries(types).map(([k, v]) => k + ' ' + v).join(', ')}), ${nut.size} with nutrients, ${portions.size} with portions → ${out.length} foods`)
   return out
@@ -207,6 +227,7 @@ function fromSheets(label, src, list, fields, { nameOk = () => true } = {}) {
 
 function ciqual(dl) {
   const files = fs.existsSync(dl) ? fs.readdirSync(dl).filter(f => /^ciqual.*\.xlsx?$/i.test(f)).sort() : []
+  say(`- CIQUAL files: ${files.join(', ') || 'none'}`)
   if (!files.length) { say('- CIQUAL: no spreadsheet downloaded'); return [] }
   let best = []
   for (const f of files) {
@@ -250,6 +271,8 @@ function japan(dl) {
 
 function main() {
   say(`# Food database build, ${new Date().toISOString().slice(0, 10)}\n`)
+  const dlog = path.join(DL, 'downloads.txt')
+  if (fs.existsSync(dlog)) say('## Downloads\n\n```\n' + fs.readFileSync(dlog, 'utf8').trim() + '\n```\n')
   say('## Sources\n')
   const us = [
     ...usda(path.join(DL, 'usda-survey'), 'USDA FNDDS'),
